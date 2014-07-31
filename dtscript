@@ -1,0 +1,120 @@
+#!/usr/bin/env node
+
+/*
+ * dtscript: run like dtrace(1M), but this outputs a (somewhat) formatted D
+ * script that's equivalent.
+ */
+
+var mod_assert = require('assert');
+var mod_getopt = require('posix-getopt');
+var mod_path = require('path');
+
+var arg0 = mod_path.basename(__filename);
+var optsUnsupported = 'aAehHlSvVZb:c:D:I:L:o:p:s:U:x:P:m:f:i:'
+var optsPassThrough = 'CFqwZ';
+var optsOkay = 'n:';
+
+
+function main()
+{
+	var parser, options;
+	var dtargs, scriptparts;
+	
+	dtargs = '';
+	scriptparts = [];
+	parser = new mod_getopt.BasicParser(
+	    [ optsUnsupported, optsPassThrough, optsOkay ].join(''),
+	    process.argv);
+	while ((option = parser.getopt()) !== undefined) {
+		if (optsUnsupported.indexOf(option.option) != -1)
+			die('unsupported DTrace option: %s', option.option);
+
+		if (optsPassThrough.indexOf(option.option) != -1) {
+			dtargs += option.option;
+			continue;
+		}
+
+		mod_assert.equal(option.option, 'n');
+		scriptparts = scriptparts.concat(parseClauses(option.optarg));
+	}
+
+	dtargs += 's';
+	dumpScript(dtargs, scriptparts);
+}
+
+function die()
+{
+	process.stderr.write(arg0 + ': ');
+	console.error.apply(null, Array.prototype.slice.call(arguments));
+	process.exit(1);
+}
+
+function parseClauses(str)
+{
+	var probspec, parts, regexp;
+
+	/*
+	 * This is just a rough cut.  It accepts some identifiers that
+	 * dtrace(1M) would reject, and it doesn't handle multiple clauses in a
+	 * single "-n" argument correctly.
+	 */
+	probespec = [
+	    '[a-zA-Z0-9]*:',	/* provider */
+	    '[a-zA-Z0-9]*:',	/* module */
+	    '[a-zA-Z0-9]*:',	/* function */
+	    '[a-zA-Z0-9]*'
+	].join('');
+
+	parts = [
+	    '\\s*(' + probespec + '(' + ',' + probespec + ')*)',
+	    '\\s*(/.+/)?',	/* predicate (does not handle nested "/") */
+	    '\\s*({.+})?\\s*'	/* body */
+	];
+	regexp = new RegExp(parts.join(''), "g");
+
+	match = regexp.exec(str);
+	if (match === null)
+		die('cannot parse: ' + str);
+
+	return ({
+	    'kind': 'clause',
+	    'probespecs': match[1].split(','),
+	    'predicate': match[3],
+	    'body': match[4]
+	});
+}
+
+function dumpScript(dtargs, scriptparts)
+{
+	console.log('#!/usr/sbin/dtrace -' + dtargs);
+	console.log();
+	scriptparts.forEach(dumpScriptClause);
+}
+
+function dumpScriptClause(clause)
+{
+	var body;
+
+	mod_assert.equal(clause.kind, 'clause');
+	console.log(clause.probespecs.join(',\n'));
+	if (clause.predicate)
+		console.log(clause.predicate);
+	if (!clause.body)
+		clause.body = '{}';
+	mod_assert.equal(clause.body[0], '{');
+	mod_assert.equal(clause.body[clause.body.length - 1], '}');
+	body = clause.body.substr(1, clause.body.length - 2);
+	console.log('{');
+	process.stdout.write(
+	    body.split(';').	/* XXX nested semicolons */
+		map(function (line) {
+			var l = line.trim();
+			if (l.length === 0)
+				return (l);
+			return ('\t' + line.trim());
+		}).
+		join(';\n'));
+	console.log('}\n');
+};
+
+main();

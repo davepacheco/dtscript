@@ -1,0 +1,22 @@
+{
+	"name": "dtscript",
+	"version": "0.0.0",
+	"bin": {
+	    "dtscript": "./dtscript"
+	},
+	"description": "reformat a dtrace(1M) one-liner into a script",
+	"dependencies": {
+		"posix-getopt": "^1.1.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/davepacheco/dtscript"
+	},
+	"keywords": [ "dtrace", "script" ],
+	"author": "Dave Pacheco <dap@cs.brown.edu>",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/davepacheco/dtscript/issues"
+	},
+	"homepage": "https://github.com/davepacheco/dtscript"
+}
