@@ -10,16 +10,16 @@ var mod_getopt = require('posix-getopt');
 var mod_path = require('path');
 
 var arg0 = mod_path.basename(__filename);
-var optsUnsupported = 'aAehHlSvVZb:c:D:I:L:o:p:s:U:x:P:m:f:i:'
+var optsUnsupported = 'aAehHlSvVZb:c:D:I:L:o:p:s:U:x:P:m:f:i:';
 var optsPassThrough = 'CFqwZ';
 var optsOkay = 'n:';
 
 
 function main()
 {
-	var parser, options;
+	var parser, option;
 	var dtargs, scriptparts;
-	
+
 	dtargs = '';
 	scriptparts = [];
 	parser = new mod_getopt.BasicParser(
@@ -51,7 +51,7 @@ function die()
 
 function parseClauses(str)
 {
-	var probspec, parts, regexp;
+	var probespec, parts, regexp, match;
 
 	/*
 	 * This is just a rough cut.  It accepts some identifiers that
@@ -59,10 +59,10 @@ function parseClauses(str)
 	 * single "-n" argument correctly.
 	 */
 	probespec = [
-	    '[a-zA-Z0-9]*:',	/* provider */
-	    '[a-zA-Z0-9]*:',	/* module */
-	    '[a-zA-Z0-9]*:',	/* function */
-	    '[a-zA-Z0-9]*'
+	    '([a-zA-Z0-9-]*:)?',	/* provider */
+	    '([a-zA-Z0-9-]*:)?',	/* module */
+	    '([a-zA-Z0-9-]*:)?',	/* function */
+	    '[a-zA-Z0-9-]*'
 	].join('');
 
 	parts = [
@@ -70,7 +70,7 @@ function parseClauses(str)
 	    '\\s*(/.+/)?',	/* predicate (does not handle nested "/") */
 	    '\\s*({.+})?\\s*'	/* body */
 	];
-	regexp = new RegExp(parts.join(''), "g");
+	regexp = new RegExp(parts.join(''), 'g');
 
 	match = regexp.exec(str);
 	if (match === null)
@@ -79,8 +79,8 @@ function parseClauses(str)
 	return ({
 	    'kind': 'clause',
 	    'probespecs': match[1].split(','),
-	    'predicate': match[3],
-	    'body': match[4]
+	    'predicate': match[9],
+	    'body': match[10]
 	});
 }
 
@@ -115,6 +115,6 @@ function dumpScriptClause(clause)
 		}).
 		join(';\n'));
 	console.log('}\n');
-};
+}
 
 main();
